@@ -48,7 +48,6 @@
         <module>prometheus-metrics</module>
         <module>websocket</module>
         <module>openapi</module>
-        <module>openapi-server-app</module>
     </modules>
 
     <!-- skip site docs in this aggregator -->
