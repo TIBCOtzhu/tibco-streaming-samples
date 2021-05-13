@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (C) 2020, TIBCO Software Inc.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  3. Neither the name of the copyright holder nor the names of its contributors
+     may be used to endorse or promote products derived from this software
+     without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- vim: set tabstop=4 softtabstop=0 expandtab shiftwidth=4 smarttab : -->
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tibco.ep.samples.web</groupId>
+    <artifactId>openapi-client</artifactId>
+    <version>1.0.0</version>
+    <name>Web: OpenAPI client</name>
+    <description>How to generate a web client for Health check web service with OpenAPI Code Generation tool</description>
+
+    <url>https://github.com/TIBCOSoftware/tibco-streaming-samples</url>
+
+    <inceptionYear>2019</inceptionYear>
+
+    <organization>
+        <name>TIBCO Software Inc.</name>
+        <url>http://www.tibco.com</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>BSD 3-Clause License</name>
+            <url>https://raw.githubusercontent.com/TIBCOSoftware/tibco-streaming-samples/master/docs/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <com.tibco.ep.sb.studio.sample>true</com.tibco.ep.sb.studio.sample>
+        <default.package>com.tibco.ep.samples.web.openapi.client</default.package>
+    </properties>
+
+    <!-- common definitions for this version of StreamBase -->
+    <parent>
+        <groupId>com.tibco.ep.sb.parent</groupId>
+        <artifactId>common</artifactId>
+        <version>11.0.0-SNAPSHOT</version>
+        <relativePath/>
+    </parent>
+
+    <build>
+        <plugins>
+            <!-- activate the plugin -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <!-- specify the OpenAPI yaml -->
+                            <inputSpec>${project.basedir}/src/main/resources/HealthCheck-REST-API-Definition.yaml</inputSpec>
+                            <!-- target to generate java client code -->
+                            <generatorName>java</generatorName>
+                            <!-- override the default library 'okhttp-gson' to 'jersey2' -->
+                            <library>jersey2</library>
+                            <output>${project.build.directory}/generated-sources</output>
+                            <apiPackage>${default.package}.handler</apiPackage>
+                            <modelPackage>${default.package}.model</modelPackage>
+                            <invokerPackage>${default.package}.handler</invokerPackage>
+                            <generateApiTests>false</generateApiTests>
+                            <generateModelTests>false</generateModelTests>
+                            <!-- pass any necessary config options -->
+                            <configOptions>
+                                <dateLibrary>java11</dateLibrary>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- FIX THIS, TOZHU, work around for java doc generation issue in java 11, if using java 8, no need to add this plugin, see https://github.com/OpenAPITools/openapi-generator/issues/3272-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <source>8</source>
+                    <doclint>none</doclint>
+                    <tags>
+                        <tag>
+                            <name>http.response.details</name>
+                            <placement>a</placement>
+                            <head>Http Response Details:</head>
+                        </tag>
+                    </tags>
+                </configuration>
+            </plugin>
+            <!-- Configure application node start/stop -->
+            <plugin>
+                <groupId>com.tibco.ep</groupId>
+                <artifactId>ep-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <executions>
+                    <execution>
+                        <id>start nodes</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start-nodes</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>run test</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test-java-fragment</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop nodes</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop-nodes</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <!-- dependencies are needed for the client being generated -->
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-annotations</artifactId>
+        </dependency>
+
+        <!-- HTTP client: jersey-client -->
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-multipart</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-json-jackson</artifactId>
+        </dependency>
+
+        <!-- @Nullable annotation -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
+        <!-- JSON processing: jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.jaxrs</groupId>
+            <artifactId>jackson-jaxrs-base</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.jaxrs</groupId>
+            <artifactId>jackson-jaxrs-json-provider</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+        </dependency>
+
+        <!-- Base64 encoding that works in both JVM and Android -->
+        <dependency>
+            <groupId>com.brsanthu</groupId>
+            <artifactId>migbase64</artifactId>
+            <version>2.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.tibco.ep.testing</groupId>
+            <artifactId>framework</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tibco.ep.dtm</groupId>
+            <artifactId>management</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -42,10 +42,6 @@
     <name>Web: springboot-eventflow</name>
     <description>How to use a WAR created by Spring Boot in an EventFlow fragment.</description>
 
-    <properties>
-        <com.tibco.ep.sb.studio.sample>true</com.tibco.ep.sb.studio.sample>
-    </properties>
-
     <!-- common definitions for this version of StreamBase -->
     <parent>
         <groupId>com.tibco.ep.sb.parent</groupId>
@@ -64,7 +60,6 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.14.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

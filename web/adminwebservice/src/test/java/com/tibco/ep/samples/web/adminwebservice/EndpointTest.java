@@ -37,8 +37,9 @@ import com.kabira.platform.property.Status;
 import com.streambase.sb.StreamBaseException;
 import com.streambase.sb.unittest.SBServerManager;
 import com.streambase.sb.unittest.ServerManagerFactory;
-import com.tibco.ep.testing.framework.Configuration;
-import com.tibco.ep.testing.framework.ConfigurationException;
+import com.tibco.ep.dtm.management.DtmCommand;
+import com.tibco.ep.testing.framework.Administration;
+import com.tibco.ep.testing.framework.Results;
 import com.tibco.ep.testing.framework.TransactionalDeadlockDetectedException;
 import com.tibco.ep.testing.framework.TransactionalMemoryLeakException;
 import com.tibco.ep.testing.framework.UnitTest;
@@ -60,12 +61,11 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertNotNull;
 
@@ -79,70 +79,70 @@ public class EndpointTest extends UnitTest {
     private static SBServerManager server;
 
     private final static String SERVICE_NAME = System.getProperty(Status.NODE_NAME);
-    private final static String ADDRESS = "localhost";
-    //node web server default port number
-    private final static int PORT = 8008;
+    private static final String USERNAME = System.getProperty("user.name");
+
+    private static String url;
     private final static String TARGETS = "targets";
+    private final static String CONTEXT_LOGIN = "login";
     private final static String ADMIN = "admin";
-    private final static String VERSION_NAME = "v1";
+    private final static String VERSION_NUMBER = "v1";
     private final static String RESPONSE_KEY_RESULTS = "results";
     private final static String RESPONSE_KEY_SERVICE_NAME = "serviceName";
     private final static String RESPONSE_KEY_RETURN_CODE = "returnCode";
     private final static String RESPONSE_KEY_ROWS = "rows";
     private final static String RESPONSE_KEY_COLUMN_HEADERS = "columnHeaders";
+    public static final String COOKIE_NAME_JSESSIONID = "JSESSIONID"; //$NON-NLS-1$
 
-    //the username and password pair gets from secure.conf
-    private final static String PASSWORD = "admin";
-    private final static String USERNAME = "admin";
+    private final static HttpAuthenticationFeature AUTHENTICATION_FEATURE = HttpAuthenticationFeature.basic(USERNAME, "");
 
-    private final static HttpAuthenticationFeature AUTHENTICATION_FEATURE = HttpAuthenticationFeature.basic(USERNAME, PASSWORD);
-
-    private ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
+    private static Cookie cookie = null;
 
     /**
      * Set up the server
      *
-     * @throws StreamBaseException    on start server error
-     * @throws ConfigurationException on configuration failure
-     * @throws InterruptedException   on start server error
+     * @throws StreamBaseException  on start server error
+     * @throws InterruptedException on start server error
      */
     @BeforeClass
-    public static void setupServer() throws StreamBaseException, ConfigurationException, InterruptedException {
-        Map<String, String> subs = new HashMap<>();
-
-        // Example configuration load
-        subs.put("PASSWORD", PASSWORD);
-        subs.put("USERNAME", USERNAME);
-        Configuration.forFile("secure.conf", subs).load().activate();
-
-        subs.clear();
-        subs.put("ADDRESS", ADDRESS);
-        subs.put("NODE_NAME", SERVICE_NAME);
-        Configuration.forFile("node.conf", subs).load().activate();
+    public static void setupServer() throws StreamBaseException, InterruptedException {
 
         // create a StreamBase server and load modules once for all tests in this class
         server = ServerManagerFactory.getEmbeddedServer();
         server.startServer();
         server.loadApp("com.tibco.ep.samples.web.adminwebservice.eventflow.Demo");
 
+        Administration administration = new Administration();
+        final Results results = administration.execute("display", "web");
+        Assert.assertEquals(DtmCommand.COMMAND_SUCCEEDED, results.returnCode());
+
+        url = results.getCommandResults()
+                     .get(0)
+                     .getResultSet()
+                     .getRows()
+                     .get(0)
+                     .getColumn(results.getCommandResults().get(0).getHeaderColumn("Network Address"));
+        LOGGER.info(url);
         Client client = ClientBuilder.newClient();
         client.register(AUTHENTICATION_FEATURE);
         WebTarget webTarget;
         Response response;
-        webTarget = client.target(new JerseyUriBuilder().scheme("http").host(ADDRESS).port(PORT).path(ADMIN).path(VERSION_NAME).path(TARGETS).build());
-        boolean isStarted = false;
+        webTarget = client.target(new JerseyUriBuilder().path(url).path(ADMIN).path(VERSION_NUMBER).path(CONTEXT_LOGIN).build());
 
         for (int i = 0; i < 60; i++) {
-            response = webTarget.request().get();
+            response = webTarget.request().post(null);
             if (response.getStatus() == Response.Status.OK.getStatusCode()) {
-                isStarted = true;
+                assertNotNull(response.getCookies().get(COOKIE_NAME_JSESSIONID));
+                cookie = response.getCookies().get(COOKIE_NAME_JSESSIONID);
                 break;
+            } else {
+                LOGGER.info("response: " + response.readEntity(String.class));
             }
             LOGGER.info("Admin web service is not ready, wait for 1 sec. Then re-try");
             Thread.sleep(1000);
         }
 
-        if (!isStarted) {
+        if (cookie == null) {
             Assert.fail("Starting Admin web service is failed.");
         }
     }
@@ -155,13 +155,9 @@ public class EndpointTest extends UnitTest {
      */
     @AfterClass
     public static void stopServer() throws InterruptedException, StreamBaseException {
-        try {
-            assertNotNull(server);
-            server.shutdownServer();
-            server = null;
-        } finally {
-            Configuration.deactiveAndRemoveAll();
-        }
+        assertNotNull(server);
+        server.shutdownServer();
+        server = null;
     }
 
     /**
@@ -181,19 +177,19 @@ public class EndpointTest extends UnitTest {
 
     /**
      * administration command discovery test case
+     *
      * @throws IOException error when parse response to JSON
      */
     @Test
     public void administrationCommandDiscoveryTest() throws IOException {
         Client client = ClientBuilder.newClient();
-        client.register(AUTHENTICATION_FEATURE);
         WebTarget webTarget;
         Response response;
         String responseEntity;
 
         LOGGER.info("find all administration targets, equals to 'epadmin help targets'");
-        webTarget = client.target(new JerseyUriBuilder().scheme("http").host(ADDRESS).port(PORT).path(ADMIN).path(VERSION_NAME).path(TARGETS).build());
-        response = webTarget.request().get();
+        webTarget = client.target(new JerseyUriBuilder().path(url).path(ADMIN).path(VERSION_NUMBER).path(TARGETS).build());
+        response = webTarget.request().cookie(cookie).get();
         Assert.assertEquals("should return status 200", Response.Status.OK.getStatusCode(), response.getStatus());
         Assert.assertNotNull("Should return help information", response.getEntity());
         responseEntity = response.readEntity(String.class);
@@ -223,7 +219,6 @@ public class EndpointTest extends UnitTest {
         final String PARAMETER_COMMAND = "command";
 
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
-        client.register(AUTHENTICATION_FEATURE);
         WebTarget webTarget;
         Response response;
         FormDataMultiPart form;
@@ -233,17 +228,15 @@ public class EndpointTest extends UnitTest {
         form = new FormDataMultiPart();
         parametersBody = new FormDataBodyPart("parameters", "");
         form.bodyPart(parametersBody);
-        webTarget = client.target(new JerseyUriBuilder().scheme("http")
-                                                        .host(ADDRESS)
-                                                        .port(PORT)
+        webTarget = client.target(new JerseyUriBuilder().path(url)
                                                         .path(ADMIN)
-                                                        .path(VERSION_NAME)
+                                                        .path(VERSION_NUMBER)
                                                         .path(TARGETS)
                                                         .path(TARGET_NODE)
                                                         .queryParam(PARAMETER_COMMAND, COMMAND_DISPLAY)
                                                         .build());
 
-        response = webTarget.request().post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA_TYPE));
+        response = webTarget.request().cookie(cookie).post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA_TYPE));
         Assert.assertEquals("should return status 200", Response.Status.OK.getStatusCode(), response.getStatus());
         responseEntity = response.readEntity(String.class);
         LOGGER.info(responseEntity);
@@ -253,8 +246,7 @@ public class EndpointTest extends UnitTest {
         JsonNode currentNodeResult = results.get(0);
         Assert.assertEquals("", SERVICE_NAME, currentNodeResult.get(RESPONSE_KEY_SERVICE_NAME).asText());
         Assert.assertEquals("", 0, currentNodeResult.get(RESPONSE_KEY_RETURN_CODE).asInt());
-        Assert.assertEquals(
-                "", JsonNodeType.ARRAY, currentNodeResult.get(RESPONSE_KEY_COLUMN_HEADERS).getNodeType());
+        Assert.assertEquals("", JsonNodeType.ARRAY, currentNodeResult.get(RESPONSE_KEY_COLUMN_HEADERS).getNodeType());
         Assert.assertEquals("", JsonNodeType.ARRAY, currentNodeResult.get(RESPONSE_KEY_ROWS).getNodeType());
 
     }
