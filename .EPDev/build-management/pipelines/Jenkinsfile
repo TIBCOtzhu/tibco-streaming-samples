@@ -52,11 +52,11 @@ pipeline {
                description: 'Make build more verbose with pipeline and tool diagnostics.')
 
 
-	//string(name: 'streamingTargetVersion', defaultValue: '',
-   		 //description: 'Override the version of Streaming used by the samples.')
-
 	string(name: 'PROJECT_VERSION', defaultValue: '',
 		 description: 'The version of Streaming that the samples use.')
+
+ 	string(name: 'streamingVersion', defaultValue: '',
+               description: 'The version of Streaming under samples from the github_samples pipeline.')	
 
     }
     
@@ -89,38 +89,57 @@ pipeline {
             }
         }
 
-        stage ('Build') {
+	stage ('Fetch Streaming Version') {
             steps {
                 script {
-		    def newJobUtil = new com.tibco.workflow.JobUtil()
-                    def streamingPipeline = "runtime"
-		    def newPlatform = "linux"
-                    epDeclarative.buildInit(
-                        pomFile: 'src/pom.xml',
-                        javaTool: newJobUtil.getOracleJava17Tool(),
-                        mavenTool: newJobUtil.getMaven38Tool(),
-			testPlatforms: [ "macos", "windows" ],
-                        primaryPlatform: "linux"
-                    )
-		
-		    // Override the streaming target version if supplied
-                    // if (params.streamingTargetVersion) {
-                    //   env.STREAMING_VERSION = params.streamingTargetVersion
-                    //  }
-			
-			if (params.PROJECT_VERSION) {
-                      		  env.PROJECT_VERSION = params.PROJECT_VERSION
-                   	 }
+                    // SCM for polling to fetch the version from the Github_samples pipeline
+                    node (jobUtil.getJenkinsBuiltInNodeLabel()) {
 
+                         git branch: use_branch_githubsamples, credentialsId: epscm.getCodelineCredentialsId('tibco-streaming-samples'), url: epscm.getCodelineUrl('tibco-streaming-samples')
 
-                    epDeclarative.buildMaven(
-                        goals: "install",
-                        platform: platform)
+                        if (fileExists('pom.xml')) {
+                            pomVersion = pomUtil.getPomVersion('pom.xml')
+                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'sb.version')
+                        }
+                    }
                 }
             }
         }
-    }
 
+	stage ('Build') {
+            steps {
+                script {
+                         def newJobUtil = new com.tibco.workflow.JobUtil()
+                         def streamingPipeline = "runtime"
+                         def newPlatform = "linux"
+
+                         // Check if the 'streamingVersion' parameter is provided.
+                         if (params.streamingVersion) {
+                         // Use the provided 'streamingVersion' instead of the fetched one.
+                         streamingVersion = params.streamingVersion
+                       }
+
+                         epDeclarative.buildInit(
+                         pomFile: 'src/pom.xml',
+                         javaTool: newJobUtil.getOracleJava17Tool(),
+                         mavenTool: newJobUtil.getMaven38Tool(),
+                         testPlatforms: [ "macos", "windows" ],
+                         primaryPlatform: "linux"
+                         )
+
+                         if (params.PROJECT_VERSION) {
+                                 env.PROJECT_VERSION = params.PROJECT_VERSION
+                         }
+
+                         epDeclarative.buildMaven(
+                         goals: "install",
+                         platform: platform)
+                  }
+            }
+        }
+
+    }
+	
     post {
         always {
             script {
