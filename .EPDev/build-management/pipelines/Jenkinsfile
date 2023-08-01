@@ -68,6 +68,7 @@ pipeline {
     environment { // Not persisted in Artifactory build record.
         // Needed for Maven CommonSettings.
         TIBCO_EP_HOME = "${env.WORKSPACE}/"
+	PROJECT_VERSION=${project.version}
     }
 
     stages {
@@ -99,7 +100,7 @@ pipeline {
 
                         if (fileExists('pom.xml')) {
                             pomVersion = pomUtil.getPomVersion('pom.xml')
-                            streamingVersion = pomUtil.getPomProperty('pom.xml', '${project.version}')
+                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'PROJECT_VERSION')
                         }
                     }
                 }
@@ -128,7 +129,7 @@ pipeline {
                          )
 
                          if (params.PROJECT_VERSION) {
-                                 env.PROJECT_VERSION = params.${project.version}
+                                 env.PROJECT_VERSION = params.PROJECT_VERSION
                          }
 
                          epDeclarative.buildMaven(
