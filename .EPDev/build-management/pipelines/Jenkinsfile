@@ -95,7 +95,7 @@ pipeline {
 	stage ('Fetch Streaming Version') {
             steps {
                 script {
-                     SCM for polling to fetch the version from the Github_samples pipeline
+                    // SCM for polling to fetch the version from the Github_samples pipeline
                      node (jobUtil.getJenkinsBuiltInNodeLabel()) {
 
                          git branch: use_branch_githubsamples, credentialsId: epscm.getCodelineCredentialsId('tibco-streaming-samples'), url: epscm.getCodelineUrl('tibco-streaming-samples')
