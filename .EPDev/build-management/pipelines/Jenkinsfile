@@ -5,6 +5,8 @@
 @Library('workflowLibs') _
 
 def jobUtil = new com.tibco.workflow.JobUtil()
+def pomUtil = new  com.tibco.workflow.PomUtil()
+def epscm = new  com.tibco.workflow.SCM()
 
 String platform = jobUtil.getJobPlatform(defaultPlatform: "linux")
 
@@ -68,7 +70,6 @@ pipeline {
     environment { // Not persisted in Artifactory build record.
         // Needed for Maven CommonSettings.
         TIBCO_EP_HOME = "${env.WORKSPACE}/"
-	PROJECT_VERSION=${project.version}
     }
 
     stages {
@@ -93,14 +94,14 @@ pipeline {
 	stage ('Fetch Streaming Version') {
             steps {
                 script {
-                    // SCM for polling to fetch the version from the Github_samples pipeline
-                    node (jobUtil.getJenkinsBuiltInNodeLabel()) {
+                     SCM for polling to fetch the version from the Github_samples pipeline
+                     node (jobUtil.getJenkinsBuiltInNodeLabel()) {
 
                          git branch: use_branch_githubsamples, credentialsId: epscm.getCodelineCredentialsId('tibco-streaming-samples'), url: epscm.getCodelineUrl('tibco-streaming-samples')
 
                         if (fileExists('pom.xml')) {
                             pomVersion = pomUtil.getPomVersion('pom.xml')
-                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'PROJECT_VERSION')
+                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'project.version')
                         }
                     }
                 }
@@ -128,9 +129,9 @@ pipeline {
                          primaryPlatform: "linux"
                          )
 
-                         if (params.PROJECT_VERSION) {
-                                 env.PROJECT_VERSION = params.PROJECT_VERSION
-                         }
+                      //   if (params.PROJECT_VERSION) {
+                        //         env.PROJECT_VERSION = params.PROJECT_VERSION
+                        // }
 
                          epDeclarative.buildMaven(
                          goals: "install",
