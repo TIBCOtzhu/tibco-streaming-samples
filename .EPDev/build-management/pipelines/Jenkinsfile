@@ -95,16 +95,11 @@ pipeline {
 	stage ('Fetch Streaming Version') {
             steps {
                 script {
-                    // SCM for polling to fetch the version from the Github_samples pipeline
-                     node (jobUtil.getJenkinsBuiltInNodeLabel()) {
-
-                         git branch: use_branch_githubsamples, credentialsId: epscm.getCodelineCredentialsId('tibco-streaming-samples'), url: epscm.getCodelineUrl('tibco-streaming-samples')
-
-                        if (fileExists('pom.xml')) {
-                            pomVersion = pomUtil.getPomVersion('pom.xml')
-                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'project.version')
-                        }
-                    }
+		    def pom = readMavenPom file: 'pom.xml'
+                    def projectVersion = pom.version
+                    echo "Project Version: ${projectVersion}"
+                
+		    env.PROJECT_VERSION = projectVersion
                 }
             }
         }
