@@ -95,7 +95,7 @@ pipeline {
 	stage ('Fetch Streaming Version') {
             steps {
                 script {
-		    def pom = readMavenPom file: 'pom.xml'
+		    def pom = readMavenPom file: 'src/pom.xml'
                     def projectVersion = pom.version
                     echo "Project Version: ${projectVersion}"
                 
