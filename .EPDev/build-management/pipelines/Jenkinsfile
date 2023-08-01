@@ -99,7 +99,7 @@ pipeline {
 
                         if (fileExists('pom.xml')) {
                             pomVersion = pomUtil.getPomVersion('pom.xml')
-                            streamingVersion = pomUtil.getPomProperty('pom.xml', 'sb.version')
+                            streamingVersion = pomUtil.getPomProperty('pom.xml', '${project.version}')
                         }
                     }
                 }
@@ -128,7 +128,7 @@ pipeline {
                          )
 
                          if (params.PROJECT_VERSION) {
-                                 env.PROJECT_VERSION = params.PROJECT_VERSION
+                                 env.PROJECT_VERSION = params.${project.version}
                          }
 
                          epDeclarative.buildMaven(
