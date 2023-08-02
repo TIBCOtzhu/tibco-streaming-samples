@@ -6,7 +6,6 @@
 
 def jobUtil = new com.tibco.workflow.JobUtil()
 def pomUtil = new  com.tibco.workflow.PomUtil()
-def epscm = new  com.tibco.workflow.SCM()
 
 String platform = jobUtil.getJobPlatform(defaultPlatform: "linux")
 
@@ -28,8 +27,7 @@ pipeline {
 
     triggers {
         // Poll once a day.
-	//pollSCM('H 0 * * *')
-	pollSCM('*/5 * * * *')
+	pollSCM('H 0 * * *')
     }
 
     parameters {
@@ -125,9 +123,9 @@ pipeline {
                          primaryPlatform: "linux"
                          )
 
-                      //   if (params.PROJECT_VERSION) {
-                        //         env.PROJECT_VERSION = params.PROJECT_VERSION
-                        // }
+                        if (params.PROJECT_VERSION) {
+                                 env.PROJECT_VERSION = params.PROJECT_VERSION
+                         }
 
                          epDeclarative.buildMaven(
                          goals: "install",
