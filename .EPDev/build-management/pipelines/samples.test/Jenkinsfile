@@ -118,7 +118,7 @@ pipeline {
 
                          epDeclarative.buildInit(
                          pomFile: 'src/pom.xml',
-                         javaTool: newJobUtil.getOracleJava17Tool(),
+                         javaTool: newJobUtil.getOracleJava11Tool(),
                          mavenTool: newJobUtil.getMaven38Tool(),
                          testPlatforms: [ "macos", "windows" ],
                          primaryPlatform: "linux"
